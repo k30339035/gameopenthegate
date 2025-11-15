@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Door Challenge - 3D Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui-overlay">
+            <div id="title-screen" class="screen active">
+                <h1>Door Challenge</h1>
+                <p>Choose the right doors to win!</p>
+                <div id="difficulty-selection">
+                    <h2>Select Difficulty</h2>
+                    <button class="difficulty-btn" data-difficulty="easy">Easy</button>
+                    <button class="difficulty-btn" data-difficulty="medium">Medium</button>
+                    <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+                </div>
+            </div>
+
+            <div id="game-screen" class="screen">
+                <div id="game-info">
+                    <div id="level-info">Level: <span id="current-level">1</span> / 9</div>
+                    <div id="doors-info">Doors: <span id="door-count">10</span></div>
+                    <div id="difficulty-info">Difficulty: <span id="current-difficulty">-</span></div>
+                </div>
+                <div id="instructions">
+                    Click on a door to open it. Avoid the X doors!
+                </div>
+            </div>
+
+            <div id="game-over-screen" class="screen">
+                <h1>Game Over!</h1>
+                <p id="game-over-message">You opened a wrong door!</p>
+                <p id="level-reached">Level Reached: <span id="final-level">1</span></p>
+                <button id="restart-btn">Play Again</button>
+            </div>
+
+            <div id="win-screen" class="screen">
+                <h1>Congratulations!</h1>
+                <p>You Won!</p>
+                <p id="win-difficulty">Difficulty: <span id="win-difficulty-text">-</span></p>
+                <button id="win-restart-btn">Play Again</button>
+            </div>
+        </div>
+
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
