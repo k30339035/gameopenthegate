@@ -536,12 +536,14 @@ function showScreen(screenId) {
 
 // Start game
 function startGame(selectedDifficulty) {
+    console.log('Starting game with difficulty:', selectedDifficulty);
     difficulty = selectedDifficulty;
     currentLevel = 1;
     gameActive = true;
 
     createDoors();
     showScreen('game-screen');
+    console.log('Game started! Level:', currentLevel);
 }
 
 // Restart game
@@ -595,19 +597,38 @@ function animate() {
 
 // Initialize game
 function init() {
+    console.log('Initializing game...');
     initScene();
     animate();
 
     // Setup event listeners
-    document.querySelectorAll('.difficulty-btn').forEach(btn => {
+    const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+    console.log('Found difficulty buttons:', difficultyButtons.length);
+
+    difficultyButtons.forEach((btn, index) => {
+        console.log('Setting up button', index, 'with difficulty:', btn.getAttribute('data-difficulty'));
         btn.addEventListener('click', (e) => {
+            console.log('Difficulty button clicked!');
             const selectedDifficulty = e.target.getAttribute('data-difficulty');
+            console.log('Selected difficulty:', selectedDifficulty);
             startGame(selectedDifficulty);
         });
     });
 
-    document.getElementById('restart-btn').addEventListener('click', restartGame);
-    document.getElementById('win-restart-btn').addEventListener('click', restartGame);
+    const restartBtn = document.getElementById('restart-btn');
+    const winRestartBtn = document.getElementById('win-restart-btn');
+
+    if (restartBtn) {
+        restartBtn.addEventListener('click', restartGame);
+        console.log('Restart button listener added');
+    }
+
+    if (winRestartBtn) {
+        winRestartBtn.addEventListener('click', restartGame);
+        console.log('Win restart button listener added');
+    }
+
+    console.log('Game initialized successfully!');
 }
 
 // Start when DOM is loaded
