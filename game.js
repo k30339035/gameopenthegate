@@ -5,6 +5,12 @@ let currentLevel = 1;
 let difficulty = 'medium';
 let wrongDoorIndices = [];
 let gameActive = false;
+let character = null;
+let characterMixer = null;
+let characterAnimations = {};
+let isMoving = false;
+let targetDoor = null;
+let clock = new THREE.Clock();
 
 // Difficulty settings
 const difficultySettings = {
@@ -76,6 +82,116 @@ function initScene() {
 
     // Handle mouse click
     canvas.addEventListener('click', onMouseClick);
+
+    // Load character
+    loadCharacter();
+}
+
+// Load FBX character
+function loadCharacter() {
+    // Try to load FBX file (put your character.fbx file in the same directory)
+    const fbxLoader = new THREE.FBXLoader();
+
+    fbxLoader.load(
+        'character.fbx',
+        (fbx) => {
+            character = fbx;
+            character.scale.setScalar(0.01); // Adjust scale as needed
+            character.position.set(0, 0, 8); // Start position in front of camera
+            character.rotation.y = Math.PI; // Face the doors
+
+            // Enable shadows
+            character.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+
+            // Setup animations if available
+            if (fbx.animations && fbx.animations.length > 0) {
+                characterMixer = new THREE.AnimationMixer(character);
+
+                fbx.animations.forEach((clip) => {
+                    characterAnimations[clip.name] = characterMixer.clipAction(clip);
+                });
+
+                // Play idle animation if available
+                if (characterAnimations['Idle']) {
+                    characterAnimations['Idle'].play();
+                } else if (characterAnimations['idle']) {
+                    characterAnimations['idle'].play();
+                }
+            }
+
+            scene.add(character);
+            console.log('Character loaded successfully!');
+        },
+        (xhr) => {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        (error) => {
+            console.log('Character file not found. Creating placeholder character.');
+            createPlaceholderCharacter();
+        }
+    );
+}
+
+// Create placeholder character if FBX not found
+function createPlaceholderCharacter() {
+    character = new THREE.Group();
+
+    // Body
+    const bodyGeometry = new THREE.CapsuleGeometry(0.3, 1, 8, 16);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x3498db });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 1;
+    body.castShadow = true;
+    character.add(body);
+
+    // Head
+    const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xf39c12 });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.8;
+    head.castShadow = true;
+    character.add(head);
+
+    // Arms
+    const armGeometry = new THREE.CapsuleGeometry(0.1, 0.6, 8, 16);
+    const armMaterial = new THREE.MeshStandardMaterial({ color: 0x3498db });
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.4, 1, 0);
+    leftArm.rotation.z = Math.PI / 6;
+    leftArm.castShadow = true;
+    character.add(leftArm);
+
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.4, 1, 0);
+    rightArm.rotation.z = -Math.PI / 6;
+    rightArm.castShadow = true;
+    character.add(rightArm);
+
+    // Legs
+    const legGeometry = new THREE.CapsuleGeometry(0.12, 0.8, 8, 16);
+    const legMaterial = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
+
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.15, 0.4, 0);
+    leftLeg.castShadow = true;
+    character.add(leftLeg);
+
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.15, 0.4, 0);
+    rightLeg.castShadow = true;
+    character.add(rightLeg);
+
+    character.position.set(0, 0, 8);
+    character.rotation.y = Math.PI;
+    scene.add(character);
+
+    console.log('Placeholder character created.');
 }
 
 // Create a door
@@ -185,7 +301,7 @@ function updateUI() {
 
 // Handle mouse click
 function onMouseClick(event) {
-    if (!gameActive) return;
+    if (!gameActive || !character || isMoving) return;
 
     // Calculate mouse position in normalized device coordinates
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -206,9 +322,66 @@ function onMouseClick(event) {
         }
 
         if (doorGroup.userData && !doorGroup.userData.clicked) {
-            handleDoorClick(doorGroup);
+            moveCharacterToDoor(doorGroup);
         }
     }
+}
+
+// Move character to door
+function moveCharacterToDoor(doorGroup) {
+    isMoving = true;
+    targetDoor = doorGroup;
+    targetDoor.userData.clicked = true;
+
+    const targetPosition = new THREE.Vector3(
+        doorGroup.position.x,
+        0,
+        doorGroup.position.z + 3
+    );
+
+    // Play walking animation if available
+    if (characterAnimations['Walking'] || characterAnimations['walking'] || characterAnimations['Walk'] || characterAnimations['walk']) {
+        const walkAnim = characterAnimations['Walking'] || characterAnimations['walking'] || characterAnimations['Walk'] || characterAnimations['walk'];
+        const idleAnim = characterAnimations['Idle'] || characterAnimations['idle'];
+
+        if (idleAnim) idleAnim.stop();
+        if (walkAnim) walkAnim.play();
+    }
+
+    // Animate movement
+    const startPosition = character.position.clone();
+    const distance = startPosition.distanceTo(targetPosition);
+    const duration = distance * 500; // Speed control
+    const startTime = Date.now();
+
+    // Rotate character to face door
+    const direction = new THREE.Vector3().subVectors(targetPosition, startPosition);
+    const angle = Math.atan2(direction.x, direction.z);
+    character.rotation.y = angle;
+
+    const moveInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        character.position.lerpVectors(startPosition, targetPosition, progress);
+
+        if (progress >= 1) {
+            clearInterval(moveInterval);
+            isMoving = false;
+
+            // Stop walking animation
+            if (characterAnimations['Walking'] || characterAnimations['walking'] || characterAnimations['Walk'] || characterAnimations['walk']) {
+                const walkAnim = characterAnimations['Walking'] || characterAnimations['walking'] || characterAnimations['Walk'] || characterAnimations['walk'];
+                const idleAnim = characterAnimations['Idle'] || characterAnimations['idle'];
+
+                if (walkAnim) walkAnim.stop();
+                if (idleAnim) idleAnim.play();
+            }
+
+            // Open door when character arrives
+            setTimeout(() => handleDoorClick(targetDoor), 300);
+        }
+    }, 16);
 }
 
 // Handle door click
@@ -314,6 +487,12 @@ function nextLevel() {
         return;
     }
 
+    // Reset character position
+    if (character) {
+        character.position.set(0, 0, 8);
+        character.rotation.y = Math.PI;
+    }
+
     createDoors();
 }
 
@@ -366,6 +545,14 @@ function restartGame() {
         }
     });
 
+    // Reset character position
+    if (character) {
+        character.position.set(0, 0, 8);
+        character.rotation.y = Math.PI;
+        isMoving = false;
+        targetDoor = null;
+    }
+
     showScreen('title-screen');
 }
 
@@ -379,6 +566,13 @@ function onWindowResize() {
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
+
+    const delta = clock.getDelta();
+
+    // Update character animations
+    if (characterMixer) {
+        characterMixer.update(delta);
+    }
 
     // Rotate camera slightly for effect
     if (gameActive) {
