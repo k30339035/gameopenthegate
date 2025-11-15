@@ -89,52 +89,63 @@ function initScene() {
 
 // Load FBX character
 function loadCharacter() {
-    // Try to load FBX file (put your character.fbx file in the same directory)
-    const fbxLoader = new THREE.FBXLoader();
+    // First, create placeholder character so game is playable immediately
+    createPlaceholderCharacter();
 
-    fbxLoader.load(
-        'character.fbx',
-        (fbx) => {
-            character = fbx;
-            character.scale.setScalar(0.01); // Adjust scale as needed
-            character.position.set(0, 0, 8); // Start position in front of camera
-            character.rotation.y = Math.PI; // Face the doors
+    // Then try to load FBX file if available
+    if (typeof THREE.FBXLoader !== 'undefined') {
+        const fbxLoader = new THREE.FBXLoader();
 
-            // Enable shadows
-            character.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
+        fbxLoader.load(
+            'character.fbx',
+            (fbx) => {
+                // Remove placeholder character
+                if (character) {
+                    scene.remove(character);
                 }
-            });
 
-            // Setup animations if available
-            if (fbx.animations && fbx.animations.length > 0) {
-                characterMixer = new THREE.AnimationMixer(character);
+                character = fbx;
+                character.scale.setScalar(0.01); // Adjust scale as needed
+                character.position.set(0, 0, 8); // Start position in front of camera
+                character.rotation.y = Math.PI; // Face the doors
 
-                fbx.animations.forEach((clip) => {
-                    characterAnimations[clip.name] = characterMixer.clipAction(clip);
+                // Enable shadows
+                character.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
                 });
 
-                // Play idle animation if available
-                if (characterAnimations['Idle']) {
-                    characterAnimations['Idle'].play();
-                } else if (characterAnimations['idle']) {
-                    characterAnimations['idle'].play();
-                }
-            }
+                // Setup animations if available
+                if (fbx.animations && fbx.animations.length > 0) {
+                    characterMixer = new THREE.AnimationMixer(character);
 
-            scene.add(character);
-            console.log('Character loaded successfully!');
-        },
-        (xhr) => {
-            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-        },
-        (error) => {
-            console.log('Character file not found. Creating placeholder character.');
-            createPlaceholderCharacter();
-        }
-    );
+                    fbx.animations.forEach((clip) => {
+                        characterAnimations[clip.name] = characterMixer.clipAction(clip);
+                    });
+
+                    // Play idle animation if available
+                    if (characterAnimations['Idle']) {
+                        characterAnimations['Idle'].play();
+                    } else if (characterAnimations['idle']) {
+                        characterAnimations['idle'].play();
+                    }
+                }
+
+                scene.add(character);
+                console.log('FBX Character loaded successfully!');
+            },
+            (xhr) => {
+                console.log('Loading character: ' + (xhr.loaded / xhr.total * 100) + '%');
+            },
+            (error) => {
+                console.log('FBX file not found. Using placeholder character.');
+            }
+        );
+    } else {
+        console.log('FBXLoader not available. Using placeholder character.');
+    }
 }
 
 // Create placeholder character if FBX not found
