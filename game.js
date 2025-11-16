@@ -598,42 +598,85 @@ function animate() {
 // Initialize game
 function init() {
     console.log('Initializing game...');
+    console.log('Document ready state:', document.readyState);
+
     initScene();
     animate();
 
-    // Setup event listeners
+    // Wait a bit to ensure DOM is fully ready
+    setTimeout(() => {
+        setupEventListeners();
+    }, 100);
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    console.log('Setting up event listeners...');
+
+    // Setup difficulty buttons
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     console.log('Found difficulty buttons:', difficultyButtons.length);
 
+    if (difficultyButtons.length === 0) {
+        console.error('ERROR: No difficulty buttons found!');
+        return;
+    }
+
     difficultyButtons.forEach((btn, index) => {
-        console.log('Setting up button', index, 'with difficulty:', btn.getAttribute('data-difficulty'));
-        btn.addEventListener('click', (e) => {
-            console.log('Difficulty button clicked!');
-            const selectedDifficulty = e.target.getAttribute('data-difficulty');
-            console.log('Selected difficulty:', selectedDifficulty);
-            startGame(selectedDifficulty);
-        });
+        const difficulty = btn.getAttribute('data-difficulty');
+        console.log('Setting up button', index, 'with difficulty:', difficulty);
+
+        // Remove any existing listeners
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+
+        // Add click event
+        newBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Button clicked! Difficulty:', difficulty);
+            startGame(difficulty);
+        }, false);
+
+        // Also add mousedown as backup
+        newBtn.addEventListener('mousedown', function(e) {
+            console.log('Button mousedown! Difficulty:', difficulty);
+        }, false);
     });
 
+    // Setup restart buttons
     const restartBtn = document.getElementById('restart-btn');
     const winRestartBtn = document.getElementById('win-restart-btn');
 
     if (restartBtn) {
-        restartBtn.addEventListener('click', restartGame);
+        restartBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Restart button clicked!');
+            restartGame();
+        });
         console.log('Restart button listener added');
     }
 
     if (winRestartBtn) {
-        winRestartBtn.addEventListener('click', restartGame);
+        winRestartBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Win restart button clicked!');
+            restartGame();
+        });
         console.log('Win restart button listener added');
     }
 
-    console.log('Game initialized successfully!');
+    console.log('Event listeners setup complete!');
 }
 
 // Start when DOM is loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded event fired');
     init();
+});
+
+// Backup: also try to init if DOM is already loaded
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    console.log('DOM already loaded, initializing immediately');
+    setTimeout(init, 1);
 }
