@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Swarm Text Game - Next-Gen 3D Prototype</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+        }
+
+        #game-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            font-size: 14px;
+            pointer-events: auto;
+            min-width: 250px;
+        }
+
+        #hud h2 {
+            margin-bottom: 10px;
+            color: #00ff00;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid #004400;
+        }
+
+        .stat-label {
+            color: #00ff00;
+        }
+
+        .stat-value {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            padding: 20px;
+            pointer-events: auto;
+            min-width: 500px;
+        }
+
+        #controls h3 {
+            margin-bottom: 15px;
+            color: #00ff00;
+            text-align: center;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        #text-input {
+            flex: 1;
+            background: #001100;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+        }
+
+        #text-input:focus {
+            outline: none;
+            background: #002200;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #00ff00;
+            box-shadow: 0 0 15px #00ff00;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #00aa00;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            max-width: 300px;
+            pointer-events: auto;
+        }
+
+        #instructions h3 {
+            margin-bottom: 10px;
+            color: #00ff00;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+
+        #instructions ul {
+            list-style: none;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        #instructions li {
+            margin: 5px 0;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        #instructions li:before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            color: #00ff00;
+        }
+
+        .title {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 48px;
+            color: #00ff00;
+            text-shadow: 0 0 20px #00ff00;
+            pointer-events: none;
+            animation: pulse 2s ease-in-out infinite;
+            opacity: 0.3;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 0.4; }
+        }
+
+        .weapon-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .weapon-btn {
+            padding: 8px 15px;
+            font-size: 12px;
+        }
+
+        .weapon-btn.active {
+            background: #00ffff;
+            box-shadow: 0 0 10px #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+
+    <div id="ui-overlay">
+        <div class="title">DRONE SWARM TEXT GAME</div>
+
+        <div id="hud">
+            <h2>⚡ System Stats</h2>
+            <div class="stat-row">
+                <span class="stat-label">FPS:</span>
+                <span class="stat-value" id="fps">60</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Entities:</span>
+                <span class="stat-value" id="entity-count">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Active Drones:</span>
+                <span class="stat-value" id="drone-count">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Draw Calls:</span>
+                <span class="stat-value">1</span>
+            </div>
+        </div>
+
+        <div id="instructions">
+            <h3>🎮 Controls</h3>
+            <ul>
+                <li>Mouse Click: Fire Weapon</li>
+                <li>W/A/S/D: Move Camera</li>
+                <li>Q/E: Camera Up/Down</li>
+                <li>Enter: Spawn Text</li>
+                <li>Type text below</li>
+            </ul>
+            <h3 style="margin-top: 15px;">🎯 Objective</h3>
+            <ul>
+                <li>Type any word or sentence</li>
+                <li>Watch drones form the text</li>
+                <li>Attack the formation</li>
+                <li>Observe swarm behavior</li>
+            </ul>
+        </div>
+
+        <div id="controls">
+            <h3>🚁 Text-to-Drone Converter</h3>
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="text-input"
+                    placeholder="Type your text here... (e.g., HELLO)"
+                    value="SWARM"
+                    maxlength="20"
+                />
+                <button id="spawn-text-btn">⚡ SPAWN DRONES</button>
+            </div>
+
+            <div class="weapon-selector">
+                <button class="weapon-btn active" data-weapon="gun">🔫 Gun</button>
+                <button class="weapon-btn" data-weapon="laser">⚡ Laser</button>
+                <button class="weapon-btn" data-weapon="explosion">💥 Explosion</button>
+            </div>
+
+            <div class="help-text">
+                Press ENTER or click SPAWN DRONES to create formation
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Game } from './src/Game.js';
+        import { WeaponComponent, WeaponType } from './src/components/WeaponComponent.js';
+
+        // Initialize game
+        const canvas = document.getElementById('game-canvas');
+        const game = new Game(canvas);
+
+        // Start game
+        game.start();
+
+        // Weapon switching
+        const weaponButtons = document.querySelectorAll('.weapon-btn');
+        weaponButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                weaponButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const weaponType = btn.dataset.weapon;
+                let weapon;
+
+                switch(weaponType) {
+                    case 'gun':
+                        weapon = new WeaponComponent(WeaponType.GUN);
+                        weapon.damage = 15;
+                        weapon.fireRate = 0.15;
+                        weapon.projectileSpeed = 50;
+                        break;
+                    case 'laser':
+                        weapon = new WeaponComponent(WeaponType.LASER);
+                        weapon.damage = 10;
+                        weapon.fireRate = 0.05;
+                        weapon.laserWidth = 0.5;
+                        break;
+                    case 'explosion':
+                        weapon = new WeaponComponent(WeaponType.EXPLOSION);
+                        weapon.damage = 50;
+                        weapon.fireRate = 1.0;
+                        weapon.explosionRadius = 8;
+                        break;
+                }
+
+                game.inputSystem.setWeapon(weapon);
+            });
+        });
+
+        // Auto-spawn demo text on load
+        setTimeout(() => {
+            const input = document.getElementById('text-input');
+            if (input.value.trim()) {
+                game.spawnTextDrones(input.value.trim());
+            }
+        }, 500);
+
+        // Make game accessible from console
+        window.game = game;
+        console.log('🎮 Game instance available as window.game');
+        console.log('💡 Try: game.spawnTextDrones("YOUR TEXT")');
+    </script>
+</body>
+</html>
